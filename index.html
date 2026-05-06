@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GIF Probator</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <header class="brand">
+          <div>
+            <h1>GIF Probator</h1>
+            <p>Prueba frames, ajusta tiempos y exporta GIFs.</p>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h2>Frames</h2>
+          <label class="file-drop" for="fileInput">
+            <input id="fileInput" type="file" accept="image/*" multiple>
+            <span>Cargar imagenes</span>
+          </label>
+          <div class="row two">
+            <button id="reverseBtn" type="button">Invertir</button>
+            <button id="clearBtn" type="button">Vaciar</button>
+          </div>
+          <div id="framesList" class="frames-list" aria-label="Lista de frames"></div>
+        </section>
+      </aside>
+
+      <section class="stage">
+        <div class="preview-topbar">
+          <div class="status">
+            <strong id="frameStatus">Sin frames</strong>
+            <span id="sizeStatus">Carga varias imagenes para empezar</span>
+          </div>
+          <div class="transport">
+            <button id="prevBtn" type="button" title="Frame anterior">‹</button>
+            <button id="playBtn" type="button" title="Reproducir">▶</button>
+            <button id="nextBtn" type="button" title="Frame siguiente">›</button>
+          </div>
+        </div>
+
+        <div id="canvasWrap" class="canvas-wrap">
+          <canvas id="previewCanvas" width="320" height="240"></canvas>
+        </div>
+
+        <div class="controls-grid">
+          <section class="panel">
+            <h2>Animacion</h2>
+            <label>
+              FPS
+              <input id="fpsInput" type="number" min="1" max="60" value="12">
+            </label>
+            <label>
+              Repeticiones
+              <select id="loopSelect">
+                <option value="0">Infinito</option>
+                <option value="1">Una vez</option>
+                <option value="2">Dos veces</option>
+                <option value="3">Tres veces</option>
+              </select>
+            </label>
+            <label class="check">
+              <input id="pingpongInput" type="checkbox">
+              Ping-pong
+            </label>
+          </section>
+
+          <section class="panel">
+            <h2>Lienzo</h2>
+            <div class="row two">
+              <label>
+                Ancho
+                <input id="widthInput" type="number" min="1" max="4096" value="320">
+              </label>
+              <label>
+                Alto
+                <input id="heightInput" type="number" min="1" max="4096" value="240">
+              </label>
+            </div>
+            <label>
+              Encaje
+              <select id="fitSelect">
+                <option value="contain">Contener</option>
+                <option value="cover">Cubrir</option>
+                <option value="stretch">Estirar</option>
+                <option value="none">Tamano real</option>
+              </select>
+            </label>
+            <label class="check">
+              <input id="pixelInput" type="checkbox" checked>
+              Pixel art nitido
+            </label>
+          </section>
+
+          <section class="panel">
+            <h2>Vista</h2>
+            <label>
+              Fondo
+              <select id="bgSelect">
+                <option value="checker">Ajedrez</option>
+                <option value="transparent">Transparente</option>
+                <option value="#111827">Oscuro</option>
+                <option value="#f8fafc">Claro</option>
+                <option value="#40e0d0">Turquesa</option>
+              </select>
+            </label>
+            <label class="check">
+              <input id="gridInput" type="checkbox">
+              Mostrar cuadricula
+            </label>
+            <label class="check">
+              <input id="ghostInput" type="checkbox">
+              Ver frame anterior
+            </label>
+          </section>
+
+          <section class="panel export-panel">
+            <h2>Exportar</h2>
+            <button id="exportBtn" type="button">Crear GIF</button>
+            <a id="downloadLink" class="download-link" download="gif-probator.gif">Descargar GIF</a>
+            <p id="exportStatus" class="hint">El GIF se genera en tu navegador.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
