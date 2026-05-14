@@ -10,6 +10,7 @@ Funciones principales:
 
 - Cargar varias imagenes como frames.
 - Reordenar, duplicar y eliminar frames.
+- Crear frames en blanco y dibujar sobre cada frame.
 - Ajustar FPS global o duracion individual por frame.
 - Previsualizar la animacion con fondo de ajedrez, cuadricula y modo de frame anterior.
 - Cambiar el tamano del lienzo y el encaje de imagen.

@@ -12,6 +12,7 @@ const state = {
 const els = {
   fileInput: document.getElementById("fileInput"),
   framesList: document.getElementById("framesList"),
+  addBlankFrameBtn: document.getElementById("addBlankFrameBtn"),
   reverseBtn: document.getElementById("reverseBtn"),
   clearBtn: document.getElementById("clearBtn"),
   prevBtn: document.getElementById("prevBtn"),
@@ -31,12 +32,21 @@ const els = {
   bgSelect: document.getElementById("bgSelect"),
   gridInput: document.getElementById("gridInput"),
   ghostInput: document.getElementById("ghostInput"),
+  drawModeInput: document.getElementById("drawModeInput"),
+  brushColorInput: document.getElementById("brushColorInput"),
+  brushSizeInput: document.getElementById("brushSizeInput"),
+  eraserInput: document.getElementById("eraserInput"),
   exportBtn: document.getElementById("exportBtn"),
   downloadLink: document.getElementById("downloadLink"),
   exportStatus: document.getElementById("exportStatus"),
 };
 
 const ctx = els.canvas.getContext("2d", { willReadFrequently: true });
+const drawState = {
+  active: false,
+  lastX: 0,
+  lastY: 0,
+};
 
 function clampInt(value, min, max, fallback) {
   const parsed = Number.parseInt(value, 10);
@@ -146,6 +156,8 @@ function updateUi() {
     ? `${frame.image.naturalWidth}x${frame.image.naturalHeight}px · ${frame.delay} ms`
     : "Carga varias imagenes para empezar";
   els.playBtn.textContent = state.playing ? "❚❚" : "▶";
+  els.canvasWrap.classList.toggle("drawing", els.drawModeInput.checked && hasFrames);
+  els.canvas.style.cursor = els.drawModeInput.checked && hasFrames ? "crosshair" : "default";
   els.prevBtn.disabled = !hasFrames;
   els.nextBtn.disabled = !hasFrames;
   els.playBtn.disabled = !hasFrames;
@@ -244,15 +256,17 @@ function moveFrame(from, to) {
 
 function duplicateFrame(index) {
   const frame = state.frames[index];
-  state.frames.splice(index + 1, 0, { ...frame });
-  state.current = index + 1;
-  renderFramesList();
-  renderPreview();
+  cloneFrame(frame, `${frame.name} copia`).then(copy => {
+    state.frames.splice(index + 1, 0, copy);
+    state.current = index + 1;
+    renderFramesList();
+    renderPreview();
+  });
 }
 
 function removeFrame(index) {
   const [frame] = state.frames.splice(index, 1);
-  if (!state.frames.some(item => item.url === frame.url)) URL.revokeObjectURL(frame.url);
+  revokeFrameUrl(frame);
   state.current = Math.max(0, Math.min(state.current, state.frames.length - 1));
   renderFramesList();
   renderPreview();
@@ -317,6 +331,7 @@ async function loadFiles(files) {
       url,
       name: file.name,
       delay: getDefaultDelay(),
+      objectUrl: true,
     });
     image.onerror = () => {
       URL.revokeObjectURL(url);
@@ -334,6 +349,48 @@ async function loadFiles(files) {
   renderPreview();
 }
 
+function loadImageFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo crear el frame"));
+    image.src = url;
+  });
+}
+
+async function createFrameFromCanvas(canvas, name, delay = getDefaultDelay()) {
+  const url = canvas.toDataURL("image/png");
+  const image = await loadImageFromUrl(url);
+  return {
+    image,
+    url,
+    name,
+    delay,
+    objectUrl: false,
+  };
+}
+
+async function cloneFrame(frame, name = frame.name) {
+  const canvas = document.createElement("canvas");
+  canvas.width = frame.image.naturalWidth;
+  canvas.height = frame.image.naturalHeight;
+  const cloneCtx = canvas.getContext("2d");
+  cloneCtx.drawImage(frame.image, 0, 0);
+  return createFrameFromCanvas(canvas, name, frame.delay);
+}
+
+async function addBlankFrame() {
+  const { width, height } = getCanvasSize();
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const frame = await createFrameFromCanvas(canvas, `Dibujo ${state.frames.length + 1}`);
+  state.frames.push(frame);
+  state.current = state.frames.length - 1;
+  renderFramesList();
+  renderPreview();
+}
+
 function syncAllDelays() {
   const delay = getDefaultDelay();
   state.frames.forEach(frame => {
@@ -344,13 +401,90 @@ function syncAllDelays() {
 }
 
 function clearFrames() {
-  state.frames.forEach(frame => URL.revokeObjectURL(frame.url));
+  state.frames.forEach(revokeFrameUrl);
   state.frames = [];
   state.current = 0;
   state.playIndex = 0;
   state.playing = false;
   renderFramesList();
   renderPreview();
+}
+
+function revokeFrameUrl(frame) {
+  const stillUsed = state.frames.some(item => item !== frame && item.url === frame.url);
+  if (frame.objectUrl && !stillUsed) URL.revokeObjectURL(frame.url);
+}
+
+function getCanvasPoint(event) {
+  const rect = els.canvas.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * els.canvas.width,
+    y: ((event.clientY - rect.top) / rect.height) * els.canvas.height,
+  };
+}
+
+function prepareFrameForDrawing() {
+  updateCanvasSize();
+  ctx.clearRect(0, 0, els.canvas.width, els.canvas.height);
+  drawFrameImage(state.frames[state.current], 1);
+}
+
+function strokeTo(x, y) {
+  const size = clampInt(els.brushSizeInput.value, 1, 96, 8);
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = size;
+  ctx.globalCompositeOperation = els.eraserInput.checked ? "destination-out" : "source-over";
+  ctx.strokeStyle = els.brushColorInput.value;
+  ctx.beginPath();
+  ctx.moveTo(drawState.lastX, drawState.lastY);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.restore();
+  drawState.lastX = x;
+  drawState.lastY = y;
+}
+
+async function commitDrawingToFrame() {
+  if (!state.frames.length) return;
+  const index = state.current;
+  const currentFrame = state.frames[index];
+  const updated = await createFrameFromCanvas(els.canvas, currentFrame.name, currentFrame.delay);
+  state.frames[index] = updated;
+  state.current = index;
+  revokeFrameUrl(currentFrame);
+  renderFramesList();
+  renderPreview();
+}
+
+function startDrawing(event) {
+  if (!els.drawModeInput.checked || !state.frames.length || state.playing) return;
+  event.preventDefault();
+  els.canvas.setPointerCapture(event.pointerId);
+  prepareFrameForDrawing();
+  const point = getCanvasPoint(event);
+  drawState.active = true;
+  drawState.lastX = point.x;
+  drawState.lastY = point.y;
+  strokeTo(point.x, point.y);
+}
+
+function draw(event) {
+  if (!drawState.active) return;
+  event.preventDefault();
+  const point = getCanvasPoint(event);
+  strokeTo(point.x, point.y);
+}
+
+function stopDrawing(event) {
+  if (!drawState.active) return;
+  event.preventDefault();
+  drawState.active = false;
+  if (els.canvas.hasPointerCapture(event.pointerId)) {
+    els.canvas.releasePointerCapture(event.pointerId);
+  }
+  commitDrawingToFrame();
 }
 
 function createExportFrames() {
@@ -542,6 +676,7 @@ async function exportGif() {
 }
 
 els.fileInput.addEventListener("change", event => loadFiles(event.target.files));
+els.addBlankFrameBtn.addEventListener("click", addBlankFrame);
 els.reverseBtn.addEventListener("click", () => {
   state.frames.reverse();
   state.current = 0;
@@ -554,6 +689,12 @@ els.nextBtn.addEventListener("click", () => setCurrent(1));
 els.playBtn.addEventListener("click", togglePlayback);
 els.fpsInput.addEventListener("change", syncAllDelays);
 els.exportBtn.addEventListener("click", exportGif);
+els.drawModeInput.addEventListener("input", updateUi);
+
+els.canvas.addEventListener("pointerdown", startDrawing);
+els.canvas.addEventListener("pointermove", draw);
+els.canvas.addEventListener("pointerup", stopDrawing);
+els.canvas.addEventListener("pointercancel", stopDrawing);
 
 [els.widthInput, els.heightInput, els.fitSelect, els.pixelInput, els.bgSelect, els.gridInput, els.ghostInput]
   .forEach(input => input.addEventListener("input", renderPreview));

@@ -26,6 +26,7 @@
             <button id="reverseBtn" type="button">Invertir</button>
             <button id="clearBtn" type="button">Vaciar</button>
           </div>
+          <button id="addBlankFrameBtn" class="full-button" type="button">Nuevo frame en blanco</button>
           <div id="framesList" class="frames-list" aria-label="Lista de frames"></div>
         </section>
       </aside>
@@ -115,6 +116,28 @@
             <label class="check">
               <input id="ghostInput" type="checkbox">
               Ver frame anterior
+            </label>
+          </section>
+
+          <section class="panel drawing-panel">
+            <h2>Dibujo</h2>
+            <label class="check">
+              <input id="drawModeInput" type="checkbox">
+              Editar frame con pincel
+            </label>
+            <div class="row two">
+              <label>
+                Color
+                <input id="brushColorInput" type="color" value="#111827">
+              </label>
+              <label>
+                Grosor
+                <input id="brushSizeInput" type="number" min="1" max="96" value="8">
+              </label>
+            </div>
+            <label class="check">
+              <input id="eraserInput" type="checkbox">
+              Borrador transparente
             </label>
           </section>
 
