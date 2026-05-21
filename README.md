@@ -2,6 +2,8 @@
 
 Herramienta gratuita para uso personal, educativo y no comercial. Sirve para probar animaciones por frames y exportarlas como GIF desde el navegador.
 
+![GIF Probator](Captura%20de%20pantalla%202026-05-21%20210456.png)
+
 ## Uso
 
 Abre `index.html` en tu navegador. No necesita servidor, instalacion ni internet.
